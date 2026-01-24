@@ -18,6 +18,9 @@ const notesEl = document.getElementById("notes");
 const noteInput = document.getElementById("noteInput");
 const addBtn = document.getElementById("addBtn");
 
+const emptyEl = document.getElementById("empty");
+const countEl = document.getElementById("count");
+
 const notesRef = ref(db, "notes");
 
 addBtn.addEventListener("click", async () => {
@@ -26,15 +29,32 @@ addBtn.addEventListener("click", async () => {
 
   await push(notesRef, { text, createdAt: Date.now() });
   noteInput.value = "";
+  noteInput.focus();
+});
+
+// Enter يضيف
+noteInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") addBtn.click();
 });
 
 onValue(notesRef, (snapshot) => {
   notesEl.innerHTML = "";
+  let count = 0;
+
   snapshot.forEach((child) => {
+    count++;
+
+    const data = child.val() ?? {};
+    const text = escapeHtml(data.text ?? "");
+    const dateText = formatDate(data.createdAt);
+
     const li = document.createElement("li");
     li.innerHTML = `
-      <span>${escapeHtml(child.val().text ?? "")}</span>
-      <button data-key="${child.key}">حذف</button>
+      <div class="noteText">
+        <div>${text}</div>
+        <div class="meta">${dateText}</div>
+      </div>
+      <button class="btn btn-danger" data-key="${child.key}">حذف</button>
     `;
 
     li.querySelector("button").onclick = async (e) => {
@@ -44,7 +64,25 @@ onValue(notesRef, (snapshot) => {
 
     notesEl.appendChild(li);
   });
+
+  if (countEl) countEl.textContent = String(count);
+  if (emptyEl) emptyEl.style.display = count ? "none" : "block";
 });
+
+function formatDate(ts){
+  if (!ts) return "";
+  try{
+    return new Date(ts).toLocaleString("ar-SA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }catch{
+    return "";
+  }
+}
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (m) => ({
